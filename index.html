@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AM Trend / Flat Predictor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #1f2937, #020617);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      color: #e5e7eb;
+    }
+    .app {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 18px;
+      padding: 18px 16px 20px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      backdrop-filter: blur(14px);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #22c55e, #22d3ee);
+      color: #020617;
+      font-weight: 700;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 12px;
+    }
+    .section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(75, 85, 99, 0.9);
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e5e7eb;
+      margin-bottom: 6px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .field label {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .field input,
+    .field select {
+      border-radius: 10px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.9);
+      padding: 6px 9px;
+      color: #e5e7eb;
+      font-size: 13px;
+      outline: none;
+    }
+    .field input:focus,
+    .field select:focus {
+      border-color: #22c55e;
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.4);
+    }
+    .hint {
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .toggle-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+      flex-wrap: wrap;
+    }
+    .toggle {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .toggle input {
+      width: 14px;
+      height: 14px;
+    }
+    .btn-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .btn {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform 0.08s ease, box-shadow 0.12s ease;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #22c55e, #22d3ee);
+      color: #020617;
+      box-shadow: 0 10px 18px rgba(34, 197, 94, 0.35);
+    }
+    .btn-secondary {
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+    }
+    .btn:active {
+      transform: translateY(1px) scale(0.99);
+      box-shadow: none;
+    }
+    .result-card {
+      margin-top: 14px;
+      border-radius: 16px;
+      padding: 10px 11px;
+      border: 1px solid rgba(75, 85, 99, 0.9);
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.96));
+      position: relative;
+      overflow: hidden;
+    }
+    .result-card::before {
+      content: "";
+      position: absolute;
+      inset: -40%;
+      opacity: 0;
+      background: conic-gradient(
+        from 0deg,
+        rgba(34, 197, 94, 0.6),
+        rgba(56, 189, 248, 0.7),
+        transparent,
+        transparent,
+        transparent
+      );
+      transition: opacity 0.3s ease;
+      z-index: -1;
+    }
+    .result-card.active::before {
+      opacity: 1;
+      animation: spin 5s linear infinite;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .result-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .result-main {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+    .result-main.trend {
+      color: #4ade80;
+    }
+    .result-main.flat {
+      color: #fb7185;
+    }
+    .result-main.neutral {
+      color: #facc15;
+    }
+    .result-sub {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 4px;
+    }
+    .result-metrics {
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .footer {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 10px;
+      color: #6b7280;
+    }
+    .footer span {
+      color: #22c55e;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div>
+        <div class="title">AM Trend Identifier</div>
+        <div class="subtitle">Boss Manual Model • Next-Day Trend vs Flat</div>
+      </div>
+      <div class="badge">BOSS • V1.0</div>
+    </div>
+
+    <form id="trendForm">
+      <div class="section">
+        <div class="section-title">1. Today&apos;s Price Range (Index)</div>
+        <div class="grid">
+          <div class="field">
+            <label for="high">High</label>
+            <input id="high" type="number" step="0.05" placeholder="e.g. 26202.55" required />
+          </div>
+          <div class="field">
+            <label for="low">Low</label>
+            <input id="low" type="number" step="0.05" placeholder="e.g. 25992.80" required />
+          </div>
+          <div class="field">
+            <label for="atr">10-Day ATR</label>
+            <input id="atr" type="number" step="0.05" placeholder="Approx ATR (pts)" required />
+            <div class="hint">From chart / ATR indicator</div>
+          </div>
+          <div class="field">
+            <label for="indexSelect">Index</label>
+            <select id="indexSelect">
+              <option value="nifty">Nifty</option>
+              <option value="banknifty">BankNifty</option>
+              <option value="sensex">Sensex</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">2. Volatility & Flows</div>
+        <div class="grid">
+          <div class="field">
+            <label for="vixChange">India VIX % Change</label>
+            <input id="vixChange" type="number" step="0.1" placeholder="+3 = up, -3 = down" required />
+            <div class="hint">Today change in %</div>
+          </div>
+          <div class="field">
+            <label for="fii">FII Net (₹ Cr)</label>
+            <input id="fii" type="number" step="1" placeholder="e.g. 1200 or -800" required />
+          </div>
+          <div class="field">
+            <label for="dii">DII Net (₹ Cr)</label>
+            <input id="dii" type="number" step="1" placeholder="e.g. 500 or -300" required />
+          </div>
+          <div class="field">
+            <label for="pcr">PCR (Optional)</label>
+            <input id="pcr" type="number" step="0.01" placeholder="e.g. 0.95" />
+            <div class="hint">Leave blank if you don&apos;t know</div>
+          </div>
+        </div>
+
+        <div class="toggle-row">
+          <label class="toggle">
+            <input id="volumeStrong" type="checkbox" />
+            <span>Last 30m volume very strong & one-sided</span>
+          </label>
+          <label class="toggle">
+            <input id="bosToday" type="checkbox" />
+            <span>BOS / Structure break on 15m today</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">3. Extra Context</div>
+        <div class="grid">
+          <div class="field">
+            <label for="dayOfWeek">Today</label>
+            <select id="dayOfWeek">
+              <option value="mon">Monday</option>
+              <option value="tue">Tuesday</option>
+              <option value="wed">Wednesday</option>
+              <option value="thu">Thursday</option>
+              <option value="fri">Friday</option>
+            </select>
+            <div class="hint">Which day&apos;s data is this?</div>
+          </div>
+          <div class="field">
+            <label for="eventDay">Event Day?</label>
+            <select id="eventDay">
+              <option value="none">Normal</option>
+              <option value="event">Big news / RBI / Budget</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-primary">Predict Tomorrow</button>
+        <button type="button" class="btn btn-secondary" id="resetBtn">Clear</button>
+      </div>
+    </form>
+
+    <div class="result-card" id="resultCard">
+      <div class="result-label">Tomorrow Bias</div>
+      <div id="resultMain" class="result-main neutral">
+        Waiting for Boss input…
+      </div>
+      <div id="resultSub" class="result-sub">
+        Enter today&apos;s market data and tap &quot;Predict Tomorrow&quot;.
+      </div>
+      <div id="resultMetrics" class="result-metrics">
+        Range, ATR %, FII/DII, VIX & structure logic will be shown here.
+      </div>
+    </div>
+
+    <div class="footer">
+      Built for <span>Boss Akhil</span> • Manual input, pro logic.
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("trendForm");
+    const resetBtn = document.getElementById("resetBtn");
+    const resultCard = document.getElementById("resultCard");
+    const resultMain = document.getElementById("resultMain");
+    const resultSub = document.getElementById("resultSub");
+    const resultMetrics = document.getElementById("resultMetrics");
+
+    function clamp(val, min, max) {
+      return Math.min(Math.max(val, min), max);
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const high = parseFloat(document.getElementById("high").value);
+      const low = parseFloat(document.getElementById("low").value);
+      const atr = parseFloat(document.getElementById("atr").value);
+      const vixChange = parseFloat(document.getElementById("vixChange").value);
+      const fii = parseFloat(document.getElementById("fii").value);
+      const dii = parseFloat(document.getElementById("dii").value);
+      const pcrInput = document.getElementById("pcr").value;
+      const pcr = pcrInput === "" ? null : parseFloat(pcrInput);
+      const volumeStrong = document.getElementById("volumeStrong").checked;
+      const bosToday = document.getElementById("bosToday").checked;
+      const dayOfWeek = document.getElementById("dayOfWeek").value;
+      const eventDay = document.getElementById("eventDay").value;
+
+      if (isNaN(high) || isNaN(low) || isNaN(atr) || isNaN(vixChange) || isNaN(fii) || isNaN(dii)) {
+        alert("Boss, fill all required fields first.");
+        return;
+      }
+      if (high <= low || atr <= 0) {
+        alert("Check high/low/ATR values again, Boss.");
+        return;
+      }
+
+      const range = high - low;
+      const rangeToAtr = range / atr;
+      const rangePctOfAtr = rangeToAtr * 100;
+
+      let trendScore = 0;
+      let flatScore = 0;
+      let notes = [];
+
+      // 1) Range vs ATR
+      if (rangeToAtr <= 0.6) {
+        trendScore += 2;
+        notes.push("Range compressed vs ATR → Trend bias.");
+      } else if (rangeToAtr >= 1.2) {
+        flatScore += 2;
+        notes.push("Big expansion day → Flat / cool-off bias.");
+      } else {
+        notes.push("Normal range vs ATR.");
+      }
+
+      // 2) VIX behaviour
+      if (vixChange >= 3) {
+        trendScore += 2;
+        notes.push("VIX up strongly → Trend risk higher.");
+      } else if (vixChange <= -3) {
+        flatScore += 2;
+        notes.push("VIX down / crush → Premium eating bias.");
+      } else {
+        notes.push("VIX change normal.");
+      }
+
+      // 3) FII & DII flows
+      const absFii = Math.abs(fii);
+      const absDii = Math.abs(dii);
+
+      if (absFii >= 1000 && fii * dii >= 0) {
+        // Both same side + strong FII
+        trendScore += 2;
+        notes.push("Strong FII with same-side flows → Trend bias.");
+      } else if (absFii <= 500) {
+        flatScore += 1;
+        notes.push("FII light / neutral → Flat bias.");
+      }
+
+      if (fii * dii < 0 && absFii > 0 && absDii > 0) {
+        flatScore += 1;
+        notes.push("FII vs DII tug-of-war → Flat bias.");
+      }
+
+      // 4) PCR (optional)
+      if (pcr !== null && !isNaN(pcr)) {
+        if (pcr >= 0.85 && pcr <= 1.25) {
+          trendScore += 1;
+          notes.push("PCR in balanced zone → Trend possible.");
+        } else if (pcr < 0.75 || pcr > 1.5) {
+          flatScore += 1;
+          notes.push("PCR extreme → Range / mean-revert bias.");
+        }
+      }
+
+      // 5) Volume & structure
+      if (volumeStrong) {
+        trendScore += 1;
+        notes.push("Last 30m strong directional volume → Trend bias.");
+      } else {
+        flatScore += 0.5;
+        notes.push("No strong closing volume.");
+      }
+
+      if (bosToday) {
+        trendScore += 1;
+        notes.push("BOS / structure break on 15m → Trend follow-through possible.");
+      } else {
+        flatScore += 0.5;
+        notes.push("No clear BOS → Range more likely.");
+      }
+
+      // 6) Day-of-week & event context (small weight)
+      if (["mon", "wed", "thu"].includes(dayOfWeek)) {
+        trendScore += 0.3;
+      } else {
+        flatScore += 0.3;
+      }
+
+      if (eventDay === "event") {
+        // Big event day → next day often flat
+        flatScore += 0.7;
+        notes.push("Big event day today → Next day often consolidates.");
+      }
+
+      // Final decision
+      const diff = trendScore - flatScore;
+      let mainText = "";
+      let subText = "";
+      let labelClass = "neutral";
+
+      const rangeText = `Range ≈ ${range.toFixed(1)} pts (~${rangePctOfAtr.toFixed(
+        0
+      )}% of ATR). Trend score: ${trendScore.toFixed(1)} • Flat score: ${flatScore.toFixed(1)}.`;
+
+      if (diff >= 2) {
+        mainText = "TREND DAY LIKELY";
+        subText =
+          "Focus on directional trades. Still wait for first 15–30m confirmation, Boss.";
+        labelClass = "trend";
+      } else if (diff <= -2) {
+        mainText = "FLAT / PREMIUM-EATING DAY LIKELY";
+        subText =
+          "Best is no trade or small scalps near range extremes. Avoid forcing 100-point targets.";
+        labelClass = "flat";
+      } else {
+        mainText = "MIXED / NO CLEAR EDGE";
+        subText =
+          "Model is not confident. Trade very light, or skip till a very clean setup appears.";
+        labelClass = "neutral";
+      }
+
+      resultCard.classList.add("active");
+      resultMain.textContent = mainText;
+      resultMain.classList.remove("trend", "flat", "neutral");
+      resultMain.classList.add(labelClass);
+      resultSub.textContent = subText;
+      resultMetrics.textContent = rangeText + " Notes: " + notes.join(" ");
+    });
+
+    resetBtn.addEventListener("click", function () {
+      form.reset();
+      resultCard.classList.remove("active");
+      resultMain.textContent = "Waiting for Boss input…";
+      resultMain.classList.remove("trend", "flat", "neutral");
+      resultMain.classList.add("neutral");
+      resultSub.textContent =
+        "Enter today&apos;s market data and tap \"Predict Tomorrow\".";
+      resultMetrics.textContent =
+        "Range, ATR %, FII/DII, VIX & structure logic will be shown here.";
+    });
+  </script>
+</body>
+</html>
